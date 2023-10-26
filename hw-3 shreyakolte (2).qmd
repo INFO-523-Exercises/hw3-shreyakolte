@@ -1,0 +1,351 @@
+---
+title: "hw-3"
+author: "shreya kolte"
+format: html
+editor: visual
+---
+
+# **Classification in Python:**
+
+Classification involves making predictions about a categorical attribute, often referred to as a class label, by considering the values of other attributes known as predictor variables. This tutorial aims to achieve the following objectives:
+
+Offer practical instances illustrating the application of various classification methods available in the scikit-learn library.
+
+Illustrate the challenge of model overfitting.
+
+### Spam Dataset:
+
+[`crl.tot`]{.underline} (double): This numerical variable represents the total length of continuous sequences in which all characters are in uppercase. It provides a measure of uninterrupted sequences of capital letters.
+
+[`dollar`]{.underline} (double): This continuous numerical variable indicates the frequency of the dollar sign ('\$') as a percentage of the total number of characters in the text. It quantifies the proportion of characters that are dollar signs.
+
+[`bang`]{.underline} (double): Measured as a continuous numerical variable, this represents the percentage of characters in the text that are exclamation marks ('!'). It quantifies the prevalence of exclamation marks in the text.
+
+[`money`]{.underline} (double): This numerical variable calculates the percentage of characters in the text that together form the word 'money.' It is represented as a continuous variable, providing insight into the presence of the word 'money' in the text.
+
+[`n000`]{.underline} (double): As a continuous numerical variable, this variable quantifies the percentage of words in the text containing the string '000.' It offers information on the occurrence of this specific string in the text.
+
+[`make`]{.underline} (double): Also a continuous numerical variable, it measures the percentage of words in the text containing the word 'make.' It provides insights into the prevalence of the word 'make' in the text.
+
+[`yesno`]{.underline} (character): This categorical variable serves as the target variable in classification tasks. It has two levels: 'n' for not spam and 'y' for spam, indicating whether a given message is classified as spam or not.
+
+```{python}
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+# Load your spam dataset
+spam = pd.read_csv("spam.csv")
+
+# Define the features (X) and the target variable (y)
+X = spam.drop("yesno", axis=1)
+y = spam["yesno"]
+
+# Split the data into training and testing sets (e.g., 60% train, 40% test)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=42, shuffle=True)
+
+spam.head(15)
+
+```
+
+We can apply Pandas cross-tabulation to examine the relationship between the Artist Nationality and Book attributes with respect to the Artist Race.
+
+```{python}
+pd.crosstab([spam['money'],spam['make']],spam['yesno'])
+```
+
+## **Decision Tree Classifier:**
+
+```{python}
+from sklearn import tree
+
+clf = tree.DecisionTreeClassifier(criterion='entropy',max_depth=3)
+clf = clf.fit(X_train, y_train)
+```
+
+The previous instructions involve taking the predictor (X) and target class (Y) attributes from the vertebrate dataset. They then create a decision tree classifier, which uses entropy to measure impurity when making split decisions.
+
+In Python's scikit-learn library, you can also use 'gini' as an alternative impurity measure. This particular classifier is set to create trees with a maximum depth of 3. Afterward, the classifier is trained on the labeled data using the fit() function.
+
+We can plot the resulting decision tree obtained after training the classifier:
+
+```{python}
+#import pydotplus 
+#from IPython.display import Image
+
+#dot_data = tree.export_graphviz(clf, feature_names=X.columns, class_names=['mammals','non-mammals'], filled=True, 
+                                #out_file=None) 
+#graph = pydotplus.graph_from_dot_data(dot_data) 
+#Image(graph.create_png())
+```
+
+Above code is giving Name Error
+
+#### Now applying the classifier for data in X_test:
+
+```{python}
+predY = clf.predict(X_test)
+predictions = pd.concat([y_test, pd.Series(predY,name='Predicted Class')], axis=1)
+pred = predictions.dropna()
+from sklearn.metrics import accuracy_score
+
+print('Accuracy on test data is %.2f percent' % (accuracy_score(y_test, predY)*100))
+```
+
+### Model Overfitting:
+
+In order to illustrate the problem of model overfitting, we investigate a dataset characterized by two dimensions. This dataset comprises 1500 labeled data points, each assigned to one of two categories labeled as 0 or 1. The generation of data points follows these rules:
+
+Class 1 data points are created through a blend of three Gaussian distributions, each centered at distinct coordinates: \[6,14\], \[10,6\], and \[14,14\], respectively.
+
+Class 0 data points are generated uniformly within a square region, where each side of the square spans 20 units in length.
+
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+from numpy.random import random
+
+
+N = 1500
+
+mean1 = [6, 14]
+mean2 = [10, 6]
+mean3 = [14, 14]
+cov = [[3.5, 0], [0, 3.5]]  # diagonal covariance
+
+np.random.seed(50)
+X = np.random.multivariate_normal(mean1, cov, int(N/6))
+X = np.concatenate((X, np.random.multivariate_normal(mean2, cov, int(N/6))))
+X = np.concatenate((X, np.random.multivariate_normal(mean3, cov, int(N/6))))
+X = np.concatenate((X, 20*np.random.rand(int(N/2),2)))
+Y = np.concatenate((np.ones(int(N/2)),np.zeros(int(N/2))))
+
+plt.figure()
+plt.plot(X[:int(N/2),0],X[:int(N/2),1],'r+',X[int(N/2):,0],X[int(N/2):,1],'k.',ms=4)
+plt.show()
+```
+
+```{python}
+#########################################
+# Training and Test set creation
+#########################################
+
+from sklearn.model_selection import train_test_split
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.8, random_state=1)
+
+from sklearn import tree
+from sklearn.metrics import accuracy_score
+
+#########################################
+# Model fitting and evaluation
+#########################################
+
+maxdepths = [2,3,4,5,6,7,8,9,10,15,20,25,30,35,40,45,50]
+
+trainAcc = np.zeros(len(maxdepths))
+testAcc = np.zeros(len(maxdepths))
+
+index = 0
+for depth in maxdepths:
+    clf = tree.DecisionTreeClassifier(max_depth=depth)
+    clf = clf.fit(X_train, Y_train)
+    Y_predTrain = clf.predict(X_train)
+    Y_predTest = clf.predict(X_test)
+    trainAcc[index] = accuracy_score(Y_train, Y_predTrain)
+    testAcc[index] = accuracy_score(Y_test, Y_predTest)
+    index += 1
+    
+#########################################
+# Plot of training and test accuracies
+#########################################
+
+plt.figure()    
+plt.plot(maxdepths,trainAcc,'ro-',maxdepths,testAcc,'bv--')
+plt.legend(['Training Accuracy','Test Accuracy'])
+plt.xlabel('Max depth')
+plt.ylabel('Accuracy')
+plt.tight_layout()
+plt.show()
+```
+
+## **Alternative Classification Techniques:**
+
+Apart from the decision tree classifier, the Python sklearn library provides a range of alternative classification techniques. In this section, we provide illustrations to showcase the utilization of diverse classification methods, including the k-nearest neighbor classifier, linear classifiers such as logistic regression and support vector machines, and ensemble methods like boosting, bagging, and random forest. These techniques are applied to the two-dimensional dataset introduced in the preceding section.
+
+### K-Nearest Neighbor Classifier
+
+In this approach, the anticipated class label for a test instance is established by identifying the most prevalent class among its k closest training instances. The user is required to define the count of nearest neighbors (k) and the choice of a distance metric. The default option employs the Euclidean distance, which is equivalent to the Minkowski distance with a parameter set to p=2:
+
+```{python}
+from sklearn.neighbors import KNeighborsClassifier
+import matplotlib.pyplot as plt
+
+numNeighbors = [1, 5, 10, 15, 20, 25, 30]
+trainAcc = []
+testAcc = []
+
+for k in numNeighbors:
+    clf = KNeighborsClassifier(n_neighbors=k, metric='minkowski', p=2)
+    clf.fit(X_train, Y_train)
+    Y_predTrain = clf.predict(X_train)
+    Y_predTest = clf.predict(X_test)
+    trainAcc.append(accuracy_score(Y_train, Y_predTrain))
+    testAcc.append(accuracy_score(Y_test, Y_predTest))
+```
+
+```{python}
+plt.figure()
+plt.plot(numNeighbors, trainAcc, 'ro-', numNeighbors, testAcc,'bv--')
+plt.legend(['Training Accuracy','Test Accuracy'])
+plt.xlabel('Number of neighbors')
+plt.ylabel('Accuracy')
+plt.show()
+```
+
+### **Linear Classifiers**
+
+Linear classifiers such as logistic regression and support vector machine (SVM) constructs a linear separating hyperplane to distinguish instances from different classes.
+
+```{python}
+from sklearn import linear_model
+from sklearn.svm import SVC
+
+C = [0.01, 0.1, 0.2, 0.5, 0.8, 1, 5, 10, 20, 50]
+LRtrainAcc = []
+LRtestAcc = []
+SVMtrainAcc = []
+SVMtestAcc = []
+
+for param in C:
+    clf = linear_model.LogisticRegression(C=param)
+    clf.fit(X_train, Y_train)
+    Y_predTrain = clf.predict(X_train)
+    Y_predTest = clf.predict(X_test)
+    LRtrainAcc.append(accuracy_score(Y_train, Y_predTrain))
+    LRtestAcc.append(accuracy_score(Y_test, Y_predTest))
+
+    clf = SVC(C=param,kernel='linear')
+    clf.fit(X_train, Y_train)
+    Y_predTrain = clf.predict(X_train)
+    Y_predTest = clf.predict(X_test)
+    SVMtrainAcc.append(accuracy_score(Y_train, Y_predTrain))
+    SVMtestAcc.append(accuracy_score(Y_test, Y_predTest))
+```
+
+```{python}
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12,6))
+ax1.plot(C, LRtrainAcc, 'ro-', C, LRtestAcc,'bv--')
+ax1.legend(['Training Accuracy','Test Accuracy'])
+ax1.set_xlabel('C')
+ax1.set_xscale('log')
+ax1.set_ylabel('Accuracy')
+
+ax2.plot(C, SVMtrainAcc, 'ro-', C, SVMtestAcc,'bv--')
+ax2.legend(['Training Accuracy','Test Accuracy'])
+ax2.set_xlabel('C')
+ax2.set_xscale('log')
+ax2.set_ylabel('Accuracy')
+plt.tight_layout()
+plt.show()
+```
+
+Note that linear classifiers perform poorly on the data since the true decision boundaries between classes are nonlinear for the given 2-dimensional dataset.
+
+### **Nonlinear Support Vector Machine**
+
+The code below shows an example of using nonlinear support vector machine with a Gaussian radial basis function kernel to fit the 2-dimensional dataset.
+
+```{python}
+from sklearn.svm import SVC
+
+C = [0.01, 0.1, 0.2, 0.5, 0.8, 1, 5, 10, 20, 50]
+SVMtrainAcc = []
+SVMtestAcc = []
+
+for param in C:
+    clf = SVC(C=param,kernel='rbf',gamma='auto')
+    clf.fit(X_train, Y_train)
+    Y_predTrain = clf.predict(X_train)
+    Y_predTest = clf.predict(X_test)
+    SVMtrainAcc.append(accuracy_score(Y_train, Y_predTrain))
+    SVMtestAcc.append(accuracy_score(Y_test, Y_predTest))
+```
+
+```{python}
+
+plt.figure()
+plt.plot(C, SVMtrainAcc, 'ro-', C, SVMtestAcc,'bv--')
+plt.legend(['Training Accuracy','Test Accuracy'])
+plt.xlabel('C')
+plt.xscale('log')
+plt.ylabel('Accuracy')
+plt.tight_layout
+plt.show()
+```
+
+### **Ensemble Methods**
+
+An ensemble classifier generates a collection of base classifiers using the training data and conducts classification by aggregating the collective predictions from each base classifier. In this instance, we explore three categories of ensemble classifiers: bagging, boosting, and random forest.
+
+```{python}
+from sklearn import ensemble
+from sklearn.tree import DecisionTreeClassifier
+
+numBaseClassifiers = 500
+maxdepth = 10
+trainAcc = []
+testAcc = []
+
+clf = ensemble.RandomForestClassifier(n_estimators=numBaseClassifiers)
+clf.fit(X_train, Y_train)
+```
+
+```{python}
+Y_predTrain = clf.predict(X_train)
+Y_predTest = clf.predict(X_test)
+trainAcc.append(accuracy_score(Y_train, Y_predTrain))
+testAcc.append(accuracy_score(Y_test, Y_predTest))
+
+clf = ensemble.BaggingClassifier(DecisionTreeClassifier(max_depth=maxdepth),n_estimators=numBaseClassifiers)
+clf.fit(X_train, Y_train)
+```
+
+```{python}
+#Y_predTrain = clf.predict(X_train)
+#Y_predTest = clf.predict(X_test)
+#trainAcc.append(accuracy_score(Y_train, Y_predTrain))
+#testAcc.append(accuracy_score(Y_test, Y_predTest))
+
+
+#methods = ['Random Forest', 'Bagging', 'AdaBoost']
+#fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12,6))
+#ax1.bar([1.5,2.5,3.5], trainAcc)
+#ax1.set_xticks([1.5,2.5,3.5])
+#ax1.set_xticklabels(methods)
+#ax2.bar([1.5,2.5,3.5], testAcc)
+#ax2.set_xticks([1.5,2.5,3.5])
+#ax2.set_xticklabels(methods)
+
+#plt.figure()# training accuracies
+
+#ax1.bar(x_positions, trainAcc)
+#ax1.set_xticks(x_positions)
+#ax1.set_xticklabels(methods)
+#ax1.set_xlabel('Methods')
+#ax1.set_ylabel('Training Accuracy')
+#ax1.set_title('Training Accuracy')
+
+# test accuracies
+#ax2.bar(x_positions, testAcc)
+#ax2.set_xticks(x_positions)
+#ax2.set_xticklabels(methods)
+#ax2.set_xlabel('Methods')
+#ax2.set_ylabel('Test Accuracy')
+#ax2.set_title('Test Accuracy')
+
+# Splots
+
+#plt.show()
+
+```
+
+The above code is giving Value error.
